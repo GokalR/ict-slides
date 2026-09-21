@@ -35,9 +35,15 @@ export async function onRequest({ request, env, params }) {
   }
 
   const r = object.range;
-  if (r) {
-    const start = 'suffix' in r ? object.size - r.suffix : r.offset ?? 0;
-    const length = 'suffix' in r ? r.suffix : r.length ?? object.size - start;
+  if (r && request.headers.has('range')) {
+    let start, length;
+    if (typeof r.suffix === 'number') {
+      length = Math.min(r.suffix, object.size);
+      start = object.size - length;
+    } else {
+      start = typeof r.offset === 'number' ? r.offset : 0;
+      length = typeof r.length === 'number' ? r.length : object.size - start;
+    }
     headers.set('content-range', `bytes ${start}-${start + length - 1}/${object.size}`);
     headers.set('content-length', String(length));
     return new Response(object.body, { status: 206, headers });
